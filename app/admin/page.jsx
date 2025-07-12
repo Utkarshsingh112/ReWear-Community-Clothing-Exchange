@@ -3,84 +3,46 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Recycle, Search, Check, X, Eye, Flag, Users, Package, AlertTriangle, TrendingUp } from "lucide-react"
+import { Recycle, Search, Check, X, Eye, Flag, Users, Package, AlertTriangle, TrendingUp, LogOut } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { getCurrentUser, logout, getUsers } from "@/lib/auth"
+import { getItems } from "@/lib/items"
+import AuthGuard from "@/components/auth-guard"
 
-const pendingItems = [
-  {
-    id: 1,
-    title: "Designer Leather Handbag",
-    category: "Accessories",
-    condition: "Excellent",
-    uploader: "Emma Wilson",
-    uploadDate: "2024-01-22",
-    status: "pending",
-    image: "/placeholder.svg?height=100&width=100",
-    flagged: false,
-  },
-  {
-    id: 2,
-    title: "Vintage Band T-Shirt",
-    category: "Tops",
-    condition: "Good",
-    uploader: "Mike Chen",
-    uploadDate: "2024-01-21",
-    status: "pending",
-    image: "/placeholder.svg?height=100&width=100",
-    flagged: true,
-  },
-  {
-    id: 3,
-    title: "Athletic Running Shoes",
-    category: "Footwear",
-    condition: "Very Good",
-    uploader: "Sarah Johnson",
-    uploadDate: "2024-01-20",
-    status: "pending",
-    image: "/placeholder.svg?height=100&width=100",
-    flagged: false,
-  },
-]
-
-const reportedItems = [
-  {
-    id: 4,
-    title: "Suspicious Designer Bag",
-    category: "Accessories",
-    uploader: "Unknown User",
-    reportReason: "Suspected counterfeit",
-    reportDate: "2024-01-19",
-    reportCount: 3,
-    image: "/placeholder.svg?height=100&width=100",
-  },
-  {
-    id: 5,
-    title: "Inappropriate Content",
-    category: "Tops",
-    uploader: "Spam Account",
-    reportReason: "Inappropriate images",
-    reportDate: "2024-01-18",
-    reportCount: 5,
-    image: "/placeholder.svg?height=100&width=100",
-  },
-]
-
-const adminStats = {
-  totalUsers: 10247,
-  activeListings: 3456,
-  pendingApprovals: 23,
-  reportedItems: 7,
-  monthlyGrowth: 12.5,
-}
-
-export default function AdminPage() {
+function AdminContent() {
+  const [user, setUser] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [allUsers, setAllUsers] = useState([])
+  const [allItems, setAllItems] = useState([])
+  const router = useRouter()
+
+  useEffect(() => {
+    const currentUser = getCurrentUser()
+    if (currentUser) {
+      setUser(currentUser)
+      // In a real app, you'd check if user has admin privileges
+      if (currentUser.email !== "admin@rewear.com") {
+        router.push("/dashboard")
+        return
+      }
+    }
+
+    // Load data
+    setAllUsers(getUsers())
+    setAllItems(getItems())
+  }, [router])
+
+  const handleLogout = () => {
+    logout()
+    router.push("/")
+  }
 
   const handleApprove = (itemId) => {
     console.log(`Approved item ${itemId}`)
@@ -95,6 +57,29 @@ export default function AdminPage() {
   const handleRemoveReported = (itemId) => {
     console.log(`Removed reported item ${itemId}`)
     // In real app, make API call to remove item
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Mock data for demo
+  const pendingItems = allItems.filter((item) => item.status === "pending").slice(0, 3)
+  const reportedItems = [] // Mock empty for now
+
+  const adminStats = {
+    totalUsers: allUsers.length,
+    activeListings: allItems.filter((item) => item.status === "active").length,
+    pendingApprovals: pendingItems.length,
+    reportedItems: reportedItems.length,
+    monthlyGrowth: 12.5,
   }
 
   return (
@@ -113,8 +98,11 @@ export default function AdminPage() {
             <Link href="/dashboard">
               <Button variant="outline">User Dashboard</Button>
             </Link>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
             <Avatar>
-              <AvatarImage src="/placeholder-user.jpg" />
               <AvatarFallback>AD</AvatarFallback>
             </Avatar>
           </div>
@@ -135,7 +123,7 @@ export default function AdminPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Users</p>
-                  <p className="text-2xl font-bold text-blue-600">{adminStats.totalUsers.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-blue-600">{adminStats.totalUsers}</p>
                 </div>
                 <Users className="h-8 w-8 text-blue-600" />
               </div>
@@ -147,7 +135,7 @@ export default function AdminPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Active Listings</p>
-                  <p className="text-2xl font-bold text-green-600">{adminStats.activeListings.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-green-600">{adminStats.activeListings}</p>
                 </div>
                 <Package className="h-8 w-8 text-green-600" />
               </div>
@@ -214,134 +202,89 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              {pendingItems.map((item) => (
-                <Card key={item.id} className={`${item.flagged ? "border-red-200 bg-red-50" : ""}`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-4">
-                      <Image
-                        src={item.image || "/placeholder.svg"}
-                        alt={item.title}
-                        width={100}
-                        height={100}
-                        className="w-20 h-20 object-cover rounded-lg"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <h3 className="font-semibold text-lg">{item.title}</h3>
-                          {item.flagged && (
-                            <Badge variant="destructive" className="flex items-center space-x-1">
-                              <Flag className="h-3 w-3" />
-                              <span>Flagged</span>
-                            </Badge>
-                          )}
+            {pendingItems.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Eye className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No pending items</h3>
+                  <p className="text-gray-600">All items have been reviewed!</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {pendingItems.map((item) => (
+                  <Card key={item.id}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-4">
+                        <Image
+                          src={item.images?.[0] || "/placeholder.svg?height=100&width=100"}
+                          alt={item.title}
+                          width={100}
+                          height={100}
+                          className="w-20 h-20 object-cover rounded-lg"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <h3 className="font-semibold text-lg">{item.title}</h3>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                            <div>
+                              <span className="font-medium">Category:</span>
+                              <p>{item.category}</p>
+                            </div>
+                            <div>
+                              <span className="font-medium">Condition:</span>
+                              <p>{item.condition}</p>
+                            </div>
+                            <div>
+                              <span className="font-medium">Uploader:</span>
+                              <p>{item.userName}</p>
+                            </div>
+                            <div>
+                              <span className="font-medium">Upload Date:</span>
+                              <p>{new Date(item.createdAt).toLocaleDateString()}</p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                          <div>
-                            <span className="font-medium">Category:</span>
-                            <p>{item.category}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium">Condition:</span>
-                            <p>{item.condition}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium">Uploader:</span>
-                            <p>{item.uploader}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium">Upload Date:</span>
-                            <p>{item.uploadDate}</p>
+                        <div className="flex flex-col space-y-2">
+                          <Button size="sm" variant="outline" className="flex items-center space-x-1 bg-transparent">
+                            <Eye className="h-4 w-4" />
+                            <span>View Details</span>
+                          </Button>
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleApprove(item.id)}
+                            >
+                              <Check className="h-4 w-4 mr-1" />
+                              Approve
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => handleReject(item.id)}>
+                              <X className="h-4 w-4 mr-1" />
+                              Reject
+                            </Button>
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col space-y-2">
-                        <Button size="sm" variant="outline" className="flex items-center space-x-1 bg-transparent">
-                          <Eye className="h-4 w-4" />
-                          <span>View Details</span>
-                        </Button>
-                        <div className="flex space-x-2">
-                          <Button
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700"
-                            onClick={() => handleApprove(item.id)}
-                          >
-                            <Check className="h-4 w-4 mr-1" />
-                            Approve
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleReject(item.id)}>
-                            <X className="h-4 w-4 mr-1" />
-                            Reject
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* Reported Items Tab */}
           <TabsContent value="reported" className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900">Reported Items</h2>
 
-            <div className="space-y-4">
-              {reportedItems.map((item) => (
-                <Card key={item.id} className="border-red-200 bg-red-50">
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-4">
-                      <Image
-                        src={item.image || "/placeholder.svg"}
-                        alt={item.title}
-                        width={100}
-                        height={100}
-                        className="w-20 h-20 object-cover rounded-lg"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <h3 className="font-semibold text-lg">{item.title}</h3>
-                          <Badge variant="destructive">{item.reportCount} reports</Badge>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                          <div>
-                            <span className="font-medium">Category:</span>
-                            <p>{item.category}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium">Uploader:</span>
-                            <p>{item.uploader}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium">Report Reason:</span>
-                            <p className="text-red-600">{item.reportReason}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium">Report Date:</span>
-                            <p>{item.reportDate}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col space-y-2">
-                        <Button size="sm" variant="outline" className="flex items-center space-x-1 bg-transparent">
-                          <Eye className="h-4 w-4" />
-                          <span>Investigate</span>
-                        </Button>
-                        <div className="flex space-x-2">
-                          <Button size="sm" variant="destructive" onClick={() => handleRemoveReported(item.id)}>
-                            <X className="h-4 w-4 mr-1" />
-                            Remove Item
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            Dismiss Report
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Flag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No reported items</h3>
+                <p className="text-gray-600">No items have been reported for review.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* User Management Tab */}
@@ -366,63 +309,32 @@ export default function AdminPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow>
-                      <TableCell className="flex items-center space-x-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback>SJ</AvatarFallback>
-                        </Avatar>
-                        <span>Sarah Johnson</span>
-                      </TableCell>
-                      <TableCell>2024-01-15</TableCell>
-                      <TableCell>8</TableCell>
-                      <TableCell>23</TableCell>
-                      <TableCell>
-                        <Badge className="bg-green-100 text-green-800">Active</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button size="sm" variant="outline">
-                          View Profile
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="flex items-center space-x-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback>EW</AvatarFallback>
-                        </Avatar>
-                        <span>Emma Wilson</span>
-                      </TableCell>
-                      <TableCell>2024-01-10</TableCell>
-                      <TableCell>12</TableCell>
-                      <TableCell>15</TableCell>
-                      <TableCell>
-                        <Badge className="bg-green-100 text-green-800">Active</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button size="sm" variant="outline">
-                          View Profile
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="flex items-center space-x-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback>MC</AvatarFallback>
-                        </Avatar>
-                        <span>Mike Chen</span>
-                      </TableCell>
-                      <TableCell>2024-01-08</TableCell>
-                      <TableCell>3</TableCell>
-                      <TableCell>7</TableCell>
-                      <TableCell>
-                        <Badge className="bg-yellow-100 text-yellow-800">Warning</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button size="sm" variant="outline">
-                          View Profile
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    {allUsers.slice(0, 5).map((userData) => (
+                      <TableRow key={userData.id}>
+                        <TableCell className="flex items-center space-x-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback>
+                              {userData.firstName?.[0]}
+                              {userData.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>
+                            {userData.firstName} {userData.lastName}
+                          </span>
+                        </TableCell>
+                        <TableCell>{new Date(userData.joinDate).toLocaleDateString()}</TableCell>
+                        <TableCell>{userData.itemsListed || 0}</TableCell>
+                        <TableCell>{userData.totalSwaps || 0}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-green-100 text-green-800">Active</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button size="sm" variant="outline">
+                            View Profile
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -431,5 +343,13 @@ export default function AdminPage() {
         </Tabs>
       </div>
     </div>
+  )
+}
+
+export default function AdminPage() {
+  return (
+    <AuthGuard>
+      <AdminContent />
+    </AuthGuard>
   )
 }

@@ -1,50 +1,20 @@
+"use client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Recycle, Users, Leaf, Star } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-
-const featuredItems = [
-  {
-    id: 1,
-    title: "Vintage Denim Jacket",
-    category: "Outerwear",
-    condition: "Excellent",
-    points: 25,
-    image: "/placeholder.svg?height=300&width=300",
-    user: "Sarah M.",
-  },
-  {
-    id: 2,
-    title: "Designer Silk Blouse",
-    category: "Tops",
-    condition: "Like New",
-    points: 35,
-    image: "/placeholder.svg?height=300&width=300",
-    user: "Emma K.",
-  },
-  {
-    id: 3,
-    title: "Athletic Running Shoes",
-    category: "Footwear",
-    condition: "Good",
-    points: 20,
-    image: "/placeholder.svg?height=300&width=300",
-    user: "Mike R.",
-  },
-  {
-    id: 4,
-    title: "Wool Winter Coat",
-    category: "Outerwear",
-    condition: "Very Good",
-    points: 45,
-    image: "/placeholder.svg?height=300&width=300",
-    user: "Lisa T.",
-  },
-]
+import { useEffect, useState } from "react"
+import { getMockItems } from "@/lib/mock-items"
 
 export default function LandingPage() {
+  const [featuredItems, setFeaturedItems] = useState([])
+
+  useEffect(() => {
+    setFeaturedItems(getMockItems())
+  }, [])
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
       {/* Header */}
@@ -124,33 +94,26 @@ export default function LandingPage() {
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center text-gray-900 mb-16">How ReWear Works</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-                <span className="text-2xl font-bold text-green-600">1</span>
+            {[1, 2, 3].map((step) => (
+              <div key={step} className="text-center">
+                <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
+                  <span className="text-2xl font-bold text-green-600">{step}</span>
+                </div>
+                <h3 className="text-xl font-semibold mb-4">
+                  {step === 1 && "List Your Items"}
+                  {step === 2 && "Browse & Request"}
+                  {step === 3 && "Exchange & Enjoy"}
+                </h3>
+                <p className="text-gray-600">
+                  {step === 1 &&
+                    "Upload photos and details of clothes you no longer wear. Set swap preferences or point values."}
+                  {step === 2 &&
+                    "Discover items you love and send swap requests or use points to redeem directly."}
+                  {step === 3 &&
+                    "Complete the exchange and enjoy your new-to-you clothing while helping the environment."}
+                </p>
               </div>
-              <h3 className="text-xl font-semibold mb-4">List Your Items</h3>
-              <p className="text-gray-600">
-                Upload photos and details of clothes you no longer wear. Set swap preferences or point values.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-                <span className="text-2xl font-bold text-green-600">2</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-4">Browse & Request</h3>
-              <p className="text-gray-600">
-                Discover items you love and send swap requests or use points to redeem directly.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-                <span className="text-2xl font-bold text-green-600">3</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-4">Exchange & Enjoy</h3>
-              <p className="text-gray-600">
-                Complete the exchange and enjoy your new-to-you clothing while helping the environment.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -172,7 +135,7 @@ export default function LandingPage() {
                 <CardContent className="p-0">
                   <div className="relative">
                     <Image
-                      src={item.image || "/placeholder.svg"}
+                      src={item.images[0]}
                       alt={item.title}
                       width={300}
                       height={300}
@@ -240,61 +203,25 @@ export default function LandingPage() {
             <div>
               <h4 className="font-semibold mb-4">Platform</h4>
               <ul className="space-y-2 text-gray-400">
-                <li>
-                  <Link href="/browse" className="hover:text-white">
-                    Browse Items
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/add-item" className="hover:text-white">
-                    List an Item
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/dashboard" className="hover:text-white">
-                    Dashboard
-                  </Link>
-                </li>
+                <li><Link href="/browse" className="hover:text-white">Browse Items</Link></li>
+                <li><Link href="/add-item" className="hover:text-white">List an Item</Link></li>
+                <li><Link href="/dashboard" className="hover:text-white">Dashboard</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-gray-400">
-                <li>
-                  <Link href="/help" className="hover:text-white">
-                    Help Center
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="hover:text-white">
-                    Contact Us
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/safety" className="hover:text-white">
-                    Safety Guidelines
-                  </Link>
-                </li>
+                <li><Link href="/help" className="hover:text-white">Help Center</Link></li>
+                <li><Link href="/contact" className="hover:text-white">Contact Us</Link></li>
+                <li><Link href="/safety" className="hover:text-white">Safety Guidelines</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-gray-400">
-                <li>
-                  <Link href="/privacy" className="hover:text-white">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms" className="hover:text-white">
-                    Terms of Service
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/community" className="hover:text-white">
-                    Community Guidelines
-                  </Link>
-                </li>
+                <li><Link href="/privacy" className="hover:text-white">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-white">Terms of Service</Link></li>
+                <li><Link href="/community" className="hover:text-white">Community Guidelines</Link></li>
               </ul>
             </div>
           </div>
