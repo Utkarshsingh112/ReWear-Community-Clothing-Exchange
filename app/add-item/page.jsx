@@ -7,11 +7,15 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Recycle, Upload, X, Plus } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Recycle, Upload, X, Plus, LogOut } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
+import { getCurrentUser, logout } from "@/lib/auth"
+import { saveItem, processImages, updateItem, getItemById } from "@/lib/items"
+import AuthGuard from "@/components/auth-guard"
 
 const categories = ["Tops", "Bottoms", "Dresses", "Outerwear", "Footwear", "Accessories", "Activewear", "Formal"]
 
@@ -25,7 +29,8 @@ const conditions = [
   { value: "fair", label: "Fair", points: 20 },
 ]
 
-export default function AddItemPage() {
+function AddItemContent({ searchParams }) {
+  const [user, setUser] = useState(null)
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -38,18 +43,61 @@ export default function AddItemPage() {
   })
   const [images, setImages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingItemId, setEditingItemId] = useState(null)
   const router = useRouter()
+
+  useEffect(() => {
+    const currentUser = getCurrentUser()
+    if (currentUser) {
+      setUser(currentUser)
+    }
+
+    // Check if we're editing an existing item
+    const editId = searchParams?.edit
+    if (editId) {
+      const existingItem = getItemById(editId)
+      if (existingItem && currentUser && existingItem.userId === currentUser.id) {
+        setIsEditing(true)
+        setEditingItemId(editId)
+        setFormData({
+          title: existingItem.title || "",
+          description: existingItem.description || "",
+          category: existingItem.category || "",
+          type: existingItem.type || "",
+          size: existingItem.size || "",
+          condition: existingItem.condition || "",
+          tags: existingItem.tags || [],
+          currentTag: "",
+        })
+        setImages(existingItem.images || [])
+      }
+    }
+  }, [searchParams])
+
+  const handleLogout = () => {
+    logout()
+    router.push("/")
+  }
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const files = e.target.files
-    if (files) {
-      // Simulate image upload - in real app, you'd upload to a service
-      const newImages = Array.from(files).map(() => "/placeholder.svg?height=200&width=200")
-      setImages((prev) => [...prev, ...newImages].slice(0, 5)) // Max 5 images
+    if (files && files.length > 0) {
+      try {
+        setIsLoading(true)
+        const base64Images = await processImages(files)
+        setImages((prev) => [...prev, ...base64Images].slice(0, 5)) // Max 5 images
+      } catch (error) {
+        setError("Failed to process images")
+      } finally {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -77,15 +125,65 @@ export default function AddItemPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
+    setError("")
+    setSuccess("")
 
-    // Simulate form submission
-    setTimeout(() => {
+    try {
+      if (!user) {
+        setError("You must be logged in to list an item")
+        return
+      }
+
+      // Validation
+      if (!formData.title || !formData.description || !formData.category || !formData.size || !formData.condition) {
+        setError("Please fill in all required fields")
+        return
+      }
+
+      const selectedCondition = conditions.find((c) => c.value === formData.condition)
+
+      const itemData = {
+        ...formData,
+        userId: user.id,
+        userName: `${user.firstName} ${user.lastName}`,
+        userEmail: user.email,
+        images: images,
+        points: selectedCondition?.points || 20,
+      }
+
+      let savedItem
+      if (isEditing && editingItemId) {
+        savedItem = updateItem(editingItemId, itemData)
+        setSuccess("Item updated successfully!")
+      } else {
+        savedItem = saveItem(itemData)
+        setSuccess("Item listed successfully!")
+      }
+
+      if (savedItem) {
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 2000)
+      }
+    } catch (err) {
+      setError("An error occurred while saving your item")
+    } finally {
       setIsLoading(false)
-      router.push("/dashboard")
-    }, 2000)
+    }
   }
 
   const selectedCondition = conditions.find((c) => c.value === formData.condition)
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -96,17 +194,37 @@ export default function AddItemPage() {
             <Recycle className="h-8 w-8 text-green-600" />
             <span className="text-2xl font-bold text-gray-900">ReWear</span>
           </Link>
-          <Link href="/dashboard">
-            <Button variant="outline">Back to Dashboard</Button>
-          </Link>
+          <div className="flex items-center space-x-4">
+            <Link href="/dashboard">
+              <Button variant="outline">Back to Dashboard</Button>
+            </Link>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">List a New Item</h1>
-          <p className="text-gray-600">Share your unused clothing with the ReWear community</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{isEditing ? "Edit Item" : "List a New Item"}</h1>
+          <p className="text-gray-600">
+            {isEditing ? "Update your item details" : "Share your unused clothing with the ReWear community"}
+          </p>
         </div>
+
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {success && (
+          <Alert className="mb-6 border-green-200 bg-green-50">
+            <AlertDescription className="text-green-800">{success}</AlertDescription>
+          </Alert>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Image Upload */}
@@ -128,10 +246,16 @@ export default function AddItemPage() {
                     onChange={handleImageUpload}
                     className="hidden"
                     id="image-upload"
+                    disabled={images.length >= 5}
                   />
-                  <label htmlFor="image-upload" className="cursor-pointer">
+                  <label
+                    htmlFor="image-upload"
+                    className={`cursor-pointer ${images.length >= 5 ? "opacity-50 cursor-not-allowed" : ""}`}
+                  >
                     <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-lg font-medium text-gray-700 mb-2">Click to upload photos</p>
+                    <p className="text-lg font-medium text-gray-700 mb-2">
+                      {images.length >= 5 ? "Maximum 5 images reached" : "Click to upload photos"}
+                    </p>
                     <p className="text-sm text-gray-500">PNG, JPG up to 10MB each</p>
                   </label>
                 </div>
@@ -336,11 +460,25 @@ export default function AddItemPage() {
                 !formData.condition
               }
             >
-              {isLoading ? "Listing Item..." : "List Item"}
+              {isLoading
+                ? isEditing
+                  ? "Updating Item..."
+                  : "Listing Item..."
+                : isEditing
+                  ? "Update Item"
+                  : "List Item"}
             </Button>
           </div>
         </form>
       </div>
     </div>
+  )
+}
+
+export default function AddItemPage({ searchParams }) {
+  return (
+    <AuthGuard>
+      <AddItemContent searchParams={searchParams} />
+    </AuthGuard>
   )
 }

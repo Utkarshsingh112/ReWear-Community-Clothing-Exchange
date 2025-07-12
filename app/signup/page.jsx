@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Recycle } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { saveUser, setCurrentUser, getUsers } from "@/lib/auth"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -21,26 +23,66 @@ export default function SignupPage() {
     agreeToTerms: false,
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const router = useRouter()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match!")
-      return
-    }
-    if (!formData.agreeToTerms) {
-      alert("Please agree to the terms and conditions")
-      return
-    }
-
     setIsLoading(true)
+    setError("")
 
-    // Simulate signup process
-    setTimeout(() => {
-      setIsLoading(false)
+    try {
+      // Validation
+      if (formData.password !== formData.confirmPassword) {
+        setError("Passwords don't match!")
+        return
+      }
+
+      if (!formData.agreeToTerms) {
+        setError("Please agree to the terms and conditions")
+        return
+      }
+
+      if (formData.password.length < 6) {
+        setError("Password must be at least 6 characters long")
+        return
+      }
+
+      // Check if user already exists
+      const existingUsers = getUsers()
+      if (existingUsers.find((user) => user.email === formData.email)) {
+        setError("An account with this email already exists")
+        return
+      }
+
+      // Create new user
+      const newUser = {
+        id: Date.now().toString(),
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        joinDate: new Date().toISOString(),
+        points: 0,
+        totalSwaps: 0,
+        itemsListed: 0,
+        successfulSwaps: 0,
+        rating: 5.0,
+      }
+
+      // Save user
+      saveUser(newUser)
+
+      // Set current user (without password)
+      const { password: _, ...userWithoutPassword } = newUser
+      setCurrentUser(userWithoutPassword)
+
       router.push("/dashboard")
-    }, 1000)
+    } catch (err) {
+      setError("An error occurred during signup")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleInputChange = (field, value) => {
@@ -62,6 +104,12 @@ export default function SignupPage() {
             <CardDescription>Create your account and start swapping sustainably</CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
