@@ -18,27 +18,7 @@ ReWear is a web platform that lets users swap unused clothes or redeem them usin
 
 ## 📁 Project Structure
 
-```
-src/
-├── components/          # Reusable React components
-│   ├── Header.jsx      # Application header
-│   ├── Hero.jsx        # Hero section component
-│   ├── Features.jsx    # Features showcase
-│   ├── Footer.jsx      # Application footer
-│   └── *.css           # Component-specific styles
-├── hooks/              # Custom React hooks
-│   ├── useAuth.js      # Authentication hook
-│   └── useLocalStorage.js # Local storage hook
-├── utils/              # Utility functions and constants
-│   └── constants.js    # Application constants
-├── assets/             # Static assets
-│   ├── logo.svg        # Application logo
-│   └── vite.svg        # Vite logo
-├── App.jsx             # Main application component
-├── App.css             # Global application styles
-├── main.jsx            # React entry point
-└── index.css           # Global CSS reset and base styles
-```
+
 
 ## 🚀 Getting Started
 
